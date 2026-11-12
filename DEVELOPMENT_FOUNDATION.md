@@ -1,5 +1,7 @@
 # Development foundation: milestone 0
 
+**Status: complete (12 November 2026).** The [public repository](https://github.com/louis-de-neve/SARtools) contains the foundation commit. Its [first CI run](https://github.com/louis-de-neve/SARtools/actions/runs/43214348201) passed on Python 3.11 and 3.13. An [active ruleset](https://github.com/louis-de-neve/SARtools/rules/27116372) targets `main` and requires both `tests (3.11)` and `tests (3.13)`.
+
 ## Purpose
 
 Establish a repeatable local and GitHub test gate before the first Sentinel-1 API adapter is built. This milestone is complete when the package installs in CI, the same tests run locally, and Git can track source without collecting research data or credentials.
