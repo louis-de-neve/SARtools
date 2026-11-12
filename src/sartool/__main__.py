@@ -1,5 +1,5 @@
 """Allow `python -m sartool` to run the CLI."""
 
-from sartool.config_cli import main
+from sartool.cli import main
 
 raise SystemExit(main())

@@ -63,6 +63,7 @@ class ToolConfig:
             self.search.start,
             self.search.end,
             self.search.max_results,
+            self.search.polarizations,
         )
 
 

@@ -15,7 +15,7 @@ See [`examples/sentinel1-grd.yaml`](../examples/sentinel1-grd.yaml) and its AOI 
 | `search.start`, `search.end` | ISO 8601 instants with timezones; start must precede end. |
 | `search.providers` | Nonempty list from `asf`, `cdse`. Only ASF is implemented so far. |
 | `search.product` | `sentinel-1-grd` in this release. |
-| `search.polarizations` | Optional list of `VV`, `VH`, `HH`, `HV`; defaults to `VV`, `VH`. The first adapter has not yet applied this filter. |
+| `search.polarizations` | Optional list of `VV`, `VH`, `HH`, `HV`; defaults to `VV`, `VH`. ASF treats this as an exact channel combination: `[VV, VH]` is sent as `VV+VH`. Unsupported combinations are rejected. See [ASF polarization values](https://docs.asf.alaska.edu/api/keywords/). |
 | `search.max_results` | Positive integer; defaults to `100`. |
 | `selection.mode` | `manual`, `all`, or `explicit_ids`; the last mode requires `selection.ids`. Download selection is a later milestone. |
 | `output.root` | Destination directory. An existing file is rejected. |
@@ -27,7 +27,7 @@ Credentials are never stored in YAML or discovery manifests. Unknown keys are re
 
 ## Discovery manifest
 
-The CLI writes a GeoJSON `FeatureCollection` with one `Feature` per provider scene. Each feature has a provider-scoped `id`, the source footprint in `geometry`, and properties: `provider`, `name`, `start`, `end`, `platform`, `product_type`, `polarizations`, `beam_mode`, `flight_direction`, `size_bytes`, `download_url`, and `source_metadata`. Times use UTC ISO 8601. Size and some SAR metadata may be absent; no values are invented. Results should be sorted deterministically before they become a selection manifest in milestone 3.
+The CLI writes a GeoJSON `FeatureCollection` with the normalized `query` and one `Feature` per provider scene. Each feature has a provider-scoped `id`, the source footprint in `geometry`, and properties: `provider`, `name`, `start`, `end`, `platform`, `product_type`, `polarizations`, `beam_mode`, `flight_direction`, `size_bytes`, `download_url`, and `source_metadata`. Times use UTC ISO 8601. Size and some SAR metadata may be absent; no values are invented. Results should be sorted deterministically before they become a selection manifest in milestone 3.
 
 ## Output semantics and open science decisions
 

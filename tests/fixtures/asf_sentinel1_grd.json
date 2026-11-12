@@ -1,0 +1,32 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-4.683928, 52.677315],
+      [-4.188534, 51.184319],
+      [-0.481565, 51.59219],
+      [-0.851514, 53.087566],
+      [-4.683928, 52.677315]
+    ]]
+  },
+  "properties": {
+    "centerLat": 52.1504,
+    "centerLon": -2.5588,
+    "stopTime": "2025-01-06T17:58:41Z",
+    "fileID": "S1A_IW_GRDH_1SDV_20250106T175816_20250106T175841_057327_070DE3_5140-GRD_HD",
+    "flightDirection": "ASCENDING",
+    "pathNumber": 30,
+    "processingLevel": "GRD_HD",
+    "url": "https://datapool.asf.alaska.edu/GRD_HD/SA/S1A_IW_GRDH_1SDV_20250106T175816_20250106T175841_057327_070DE3_5140.zip",
+    "startTime": "2025-01-06T17:58:16Z",
+    "sceneName": "S1A_IW_GRDH_1SDV_20250106T175816_20250106T175841_057327_070DE3_5140",
+    "platform": "Sentinel-1A",
+    "bytes": 1012537715,
+    "md5sum": "42d8a0c27b84b3fb9d5c6bfbf59ce45a",
+    "orbit": 57327,
+    "polarization": "VV+VH",
+    "fileName": "S1A_IW_GRDH_1SDV_20250106T175816_20250106T175841_057327_070DE3_5140.zip",
+    "beamModeType": "IW"
+  }
+}

@@ -22,7 +22,7 @@ python3 -m compileall -q src tests
 git status --short
 ```
 
-The package has no runtime third-party dependencies yet. Python packaging tools are absent in the current local environment, so local testing uses `PYTHONPATH=src`; CI validates installation from `pyproject.toml`.
+At milestone 0 the package had no runtime third-party dependencies. Later milestones add provider and geometry dependencies; use the current commands in `README.md` for development.
 
 ## Done when
 

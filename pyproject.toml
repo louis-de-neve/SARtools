@@ -9,12 +9,14 @@ description = "Research tool for discovering and exporting SAR data"
 requires-python = ">=3.11"
 dependencies = [
     "PyYAML>=6,<7",
+    "asf_search>=14.1,<15",
     "pyproj>=3.7,<4",
+    "requests>=2.31,<3",
     "shapely>=2,<3",
 ]
 
 [project.scripts]
-sartool = "sartool.config_cli:main"
+sartool = "sartool.cli:main"
 
 [project.optional-dependencies]
 dev = ["ruff>=0.14,<1"]

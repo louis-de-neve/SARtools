@@ -37,6 +37,15 @@ class SearchQueryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "max_results"):
             SearchQuery((-5.0, 50.0, -4.0, 51.0), self.start, self.end, max_results=0)
 
+    def test_rejects_duplicate_polarizations(self) -> None:
+        with self.assertRaisesRegex(ValueError, "duplicates"):
+            SearchQuery(
+                (-5.0, 50.0, -4.0, 51.0),
+                self.start,
+                self.end,
+                polarizations=("VV", "VV"),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

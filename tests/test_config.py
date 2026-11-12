@@ -38,6 +38,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(loaded.output.root, self.directory.parent / "data")
         self.assertEqual(loaded.output.target_crs, "EPSG:32630")
         self.assertEqual(loaded.search_query().max_results, 10)
+        self.assertEqual(loaded.search_query().polarizations, ("VV", "VH"))
 
     def test_missing_aoi_and_self_intersecting_polygon_report_field(self) -> None:
         self.change("./aoi.geojson", "./missing.geojson")
