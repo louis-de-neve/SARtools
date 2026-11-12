@@ -1,0 +1,19 @@
+Interface:
+CLI with config file
+GUI with geospatial selection (multiple projections) and temporal selection slider
+
+Stage 1:
+Based off inputs, determine the available data from multiple sources - present these options to the user
+User can then select location to save the files etc
+
+Stage 2:
+Download the data from APIs and store it according to user definition
+
+Output:
+Folders of netCDF and other files (i.e. arrays for ML training).
+
+
+Dev planning:
+Unit tests throughout and CI/CD with github
+
+Once finalised, containerisation with docker for distribution across platforms
