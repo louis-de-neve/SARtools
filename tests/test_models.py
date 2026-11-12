@@ -1,15 +1,15 @@
 """Tests for provider-independent search validation."""
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from sartool.models import SearchQuery
 
 
 class SearchQueryTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.start = datetime(2025, 1, 1, tzinfo=timezone.utc)
-        self.end = datetime(2025, 2, 1, tzinfo=timezone.utc)
+        self.start = datetime(2025, 1, 1, tzinfo=UTC)
+        self.end = datetime(2025, 2, 1, tzinfo=UTC)
 
     def test_accepts_wgs84_bbox_and_aware_interval(self) -> None:
         query = SearchQuery((-5.0, 50.0, -4.0, 51.0), self.start, self.end)
@@ -31,7 +31,11 @@ class SearchQueryTests(unittest.TestCase):
         local_start = datetime(2025, 1, 1, 1, tzinfo=london_winter)
         query = SearchQuery((-5.0, 50.0, -4.0, 51.0), local_start, self.end)
         self.assertEqual(query.start, self.start)
-        self.assertEqual(query.start.tzinfo, timezone.utc)
+        self.assertEqual(query.start.tzinfo, UTC)
+
+    def test_rejects_nonpositive_result_limit(self) -> None:
+        with self.assertRaisesRegex(ValueError, "max_results"):
+            SearchQuery((-5.0, 50.0, -4.0, 51.0), self.start, self.end, max_results=0)
 
 
 if __name__ == "__main__":

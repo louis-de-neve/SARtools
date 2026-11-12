@@ -1,0 +1,18 @@
+schema_version: 1
+search:
+  aoi: ./aoi.geojson
+  start: 2025-01-01T00:00:00Z
+  end: 2025-01-08T00:00:00Z
+  providers: [asf]
+  product: sentinel-1-grd
+  polarizations: [VV, VH]
+  max_results: 10
+selection:
+  mode: manual
+output:
+  root: ../data
+  folder_template: "{provider}/{mission}/{year}/{scene_id}"
+  formats: [original]
+  processing_profile: calibrated_geocoded_v1
+  target_crs: EPSG:32630
+  pixel_size_m: 10
