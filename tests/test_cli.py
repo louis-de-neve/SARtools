@@ -124,6 +124,42 @@ class CLITests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn("Configuration valid", stdout.getvalue())
 
+    def test_iceye_search_has_own_product(self) -> None:
+        stdout = io.StringIO()
+        with patch("sartool.cli.make_adapter") as factory, redirect_stdout(stdout):
+            factory.return_value.search.return_value = []
+            result = main(["search", "iceye", *ARGS[2:], "--beam-mode", "spotlight"])
+        self.assertEqual(result, 0)
+        factory.assert_called_once_with("iceye")
+        self.assertEqual(json.loads(stdout.getvalue())["query"]["product"], "iceye-grd")
+
+    def test_capella_search_has_own_product(self) -> None:
+        stdout = io.StringIO()
+        with patch("sartool.cli.make_adapter") as factory, redirect_stdout(stdout):
+            factory.return_value.search.return_value = []
+            result = main(["search", "capella", *ARGS[2:]])
+        self.assertEqual(result, 0)
+        factory.assert_called_once_with("capella")
+        self.assertEqual(
+            json.loads(stdout.getvalue())["query"]["product"], "capella-detected"
+        )
+
+    def test_umbra_and_nisar_search_have_own_products(self) -> None:
+        for provider, product in (("umbra", "umbra-gec"), ("nisar", "nisar-gcov")):
+            with self.subTest(provider=provider):
+                stdout = io.StringIO()
+                with (
+                    patch("sartool.cli.make_adapter") as factory,
+                    redirect_stdout(stdout),
+                ):
+                    factory.return_value.search.return_value = []
+                    result = main(["search", provider, *ARGS[2:]])
+                self.assertEqual(result, 0)
+                factory.assert_called_once_with(provider)
+                self.assertEqual(
+                    json.loads(stdout.getvalue())["query"]["product"], product
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

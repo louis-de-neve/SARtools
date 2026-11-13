@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SARtool · ASF discovery</title>
+  <title>SARtool · SAR discovery</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
   <style>
     :root { font: 15px/1.45 system-ui, sans-serif; color: #e9f0f4; background: #101a23; }
@@ -54,11 +54,12 @@
   </style>
 </head>
 <body>
-  <header><h1>SARtool</h1><p>Explore available Sentinel-1 GRD scenes from ASF</p></header>
+  <header><h1>SARtool</h1><p>Explore open SAR scenes from Sentinel-1, ICEYE, Capella, Umbra, and NISAR</p></header>
   <main>
     <section class="panel" aria-label="Search input">
       <h2>Search area and time</h2>
       <form id="search-form">
+        <p class="hint">Searches Sentinel-1 through ASF, ICEYE, Capella, Umbra Open Data, and NISAR for the same area and time.</p>
         <div class="grid">
           <div><label for="west">West</label><input id="west" type="number" step="any" value="-0.5" required></div>
           <div><label for="south">South</label><input id="south" type="number" step="any" value="51.3" required></div>
@@ -70,17 +71,22 @@
         <label for="end">To (UTC)</label><input id="end" type="datetime-local" value="2025-01-08T00:00" required>
         <label for="polarization">Polarization</label>
         <select id="polarization"><option value="any">Any</option><option>VV+VH</option><option>HH+HV</option><option>VV</option><option>HH</option></select>
-        <label for="beam-mode">Acquisition mode</label>
-        <select id="beam-mode"><option value="any">Any</option><option value="IW">IW · Interferometric Wide</option><option value="EW">EW · Extra Wide</option><option value="SM">SM · Stripmap (S1–S6)</option></select>
-        <p class="hint">Stripmap is catalogued by ASF as beams S1–S6. Coverage varies by location and date.</p>
-        <button id="sm-example" type="button" style="margin-top:12px;width:100%;background:#2c5360;color:#e9f0f4">Load known SM example</button>
-        <label for="limit">Maximum scenes</label><input id="limit" type="number" min="1" max="200" value="50" required>
-        <button id="submit" type="submit">Search ASF</button>
+        <p class="hint">Polarization applies to all satellite sources.</p>
+        <label for="sentinel-mode">Sentinel-1 mode</label>
+        <select id="sentinel-mode"><option value="any">Any</option><option value="IW">IW · Interferometric Wide</option><option value="EW">EW · Extra Wide</option><option value="SM">SM · Stripmap (S1–S6)</option></select>
+        <p class="hint">This filter applies only to Sentinel-1. The other satellites are always searched.</p>
+        <button id="sm-example" type="button" style="margin-top:12px;width:100%;background:#2c5360;color:#e9f0f4">Load known Sentinel-1 SM area</button>
+        <button id="iceye-example" type="button" style="margin-top:8px;width:100%;background:#2c5360;color:#e9f0f4">Load known ICEYE example</button>
+        <button id="capella-example" type="button" style="margin-top:8px;width:100%;background:#2c5360;color:#e9f0f4">Load known Capella example</button>
+        <button id="umbra-example" type="button" style="margin-top:8px;width:100%;background:#2c5360;color:#e9f0f4">Load known Umbra example</button>
+        <button id="nisar-example" type="button" style="margin-top:8px;width:100%;background:#2c5360;color:#e9f0f4">Load known NISAR example</button>
+        <label for="limit">Maximum scenes per satellite source</label><input id="limit" type="number" min="1" max="200" value="50" required>
+        <button id="submit" type="submit">Search all satellites</button>
       </form>
     </section>
     <div class="workspace">
       <section class="panel" aria-label="Footprint map">
-        <h2>Scene footprints</h2><p id="status" class="status" role="status">Enter a search and select Search ASF.</p>
+        <h2>Scene footprints</h2><p id="status" class="status" role="status">Enter a search and select Search all satellites.</p>
         <div class="map-toolbar"><button id="draw-area" type="button" aria-pressed="false">Draw search area</button><span id="map-help">Drag on the map after selecting Draw search area. Pan and zoom normally otherwise.</span></div>
         <div id="map" role="application" aria-label="Map with search area and scene footprints"></div>
         <p class="legend"><span class="swatch"></span>Scene footprint <span class="swatch"></span>Search area</p>
@@ -123,11 +129,16 @@
       }).addTo(map);
     }
     function previewUrlFor(feature) {
+      const graphic=feature.properties.source_metadata?.assets?.thumbnail?.href||feature.properties.source_metadata?.assets?.graphic?.href;
+      if(typeof graphic==='string') {
+        try { const url=new URL(graphic); if(url.protocol==='https:' && /\.png$/i.test(url.pathname)) return graphic; }
+        catch { /* Continue to other previews. */ }
+      }
       const browse=feature.properties.source_metadata?.browse;
       const candidates=Array.isArray(browse)?browse:[browse];
       return candidates.find(value=>{
         if(typeof value!=='string') return false;
-        try { const url=new URL(value); return url.protocol==='https:' && /\.jpe?g$/i.test(url.pathname); }
+        try { const url=new URL(value); return url.protocol==='https:' && /\.(jpe?g|png)$/i.test(url.pathname); }
         catch { return false; }
       });
     }
@@ -135,7 +146,7 @@
     function renderList() {
       const list=byId('scenes'); list.replaceChildren();
       features.forEach((f,i)=>{ const button=document.createElement('button'); button.className=`scene${i===selected?' active':''}`; button.type='button'; button.textContent=f.properties.name;
-        const small=document.createElement('small'); small.textContent=`${f.properties.start} · ${f.properties.platform}`; button.append(small); button.addEventListener('click',()=>select(i)); list.append(button); });
+        const small=document.createElement('small'); small.textContent=`${f.properties.platform} · ${f.properties.provider.toUpperCase()} · ${f.properties.product_type} · ${f.properties.start}`; button.append(small); button.addEventListener('click',()=>select(i)); list.append(button); });
     }
     function renderDetails() {
       const details=byId('details'); details.replaceChildren(); if(selected<0) { details.textContent='Select a scene to inspect its metadata.'; return; }
@@ -143,22 +154,25 @@
       const previewUrl=previewUrlFor(f);
       if(previewUrl) {
         const figure=document.createElement('figure'), image=document.createElement('img'), caption=document.createElement('figcaption');
-        figure.className='preview'; image.src=previewUrl; image.alt=`ASF preview of ${p.name}`; image.loading='lazy'; image.referrerPolicy='no-referrer';
-        caption.textContent='ASF browse preview';
-        image.addEventListener('error',()=>{ image.remove(); caption.textContent='ASF preview unavailable'; });
+        figure.className='preview'; image.src=previewUrl; image.alt=`Preview of ${p.name}`; image.loading='lazy'; image.referrerPolicy='no-referrer';
+        caption.textContent=`${p.provider.toUpperCase()} browse preview`;
+        image.addEventListener('error',()=>{ image.remove(); caption.textContent='Preview unavailable'; });
         figure.append(image,caption); details.append(figure);
       }
-      for(const [label,value] of [['Scene ID',f.id],['Platform',p.platform],['Acquired',p.start],['Product',p.product_type],['Polarization',p.polarizations.join('+')],['Beam mode',p.beam_mode||'—'],['Direction',p.flight_direction||'—'],['URL',p.download_url||'—'],['Size',p.size_bytes==null?'—':`${(p.size_bytes/1e9).toFixed(2)} GB`]]) {
+      for(const [label,value] of [['Scene ID',f.id],['Catalogue',p.provider],['Platform',p.platform],['Acquired',p.start],['Product',p.product_type],['Polarization',p.polarizations.join('+')],['Beam mode',p.beam_mode||'—'],['Direction',p.flight_direction||'—'],['Asset URL',p.download_url||'—'],['Size',p.size_bytes==null?'—':`${(p.size_bytes/1e9).toFixed(2)} GB`]]) {
         const dt=document.createElement('dt'), dd=document.createElement('dd'); dt.textContent=label; dd.textContent=value; dl.append(dt,dd);
       } details.append(dl);
     }
     byId('search-form').addEventListener('submit', async event => {
-      event.preventDefault(); const button=byId('submit'), status=byId('status'); button.disabled=true; status.className='status'; status.textContent='Searching ASF…';
+      event.preventDefault(); const button=byId('submit'), status=byId('status'); button.disabled=true; status.className='status'; status.textContent='Searching all five satellite sources…';
       const bbox=currentBbox();
       try {
-        const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,start:byId('start').value+'Z',end:byId('end').value+'Z',polarization:byId('polarization').value,beam_mode:byId('beam-mode').value,max_results:Number(byId('limit').value)})});
-        const result=await response.json(); if(!response.ok) throw new Error(result.error||'Search failed');
-        features=result.features; selected=-1; updateArea(); renderMap(); renderList(); renderDetails(); status.textContent=`${features.length} scene${features.length===1?'':'s'} found${features.length===Number(byId('limit').value)?' (result limit reached)':''}.`;
+        const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,start:byId('start').value+'Z',end:byId('end').value+'Z',polarization:byId('polarization').value,sentinel_mode:byId('sentinel-mode').value,max_results:Number(byId('limit').value)})});
+        const result=await response.json(); if(!response.ok) throw new Error(Object.values(result.errors||{}).join(' · ')||result.error||'Search failed');
+        features=result.features; selected=-1; updateArea(); renderMap(); renderList(); renderDetails();
+        const counts=Object.entries(result.sources).map(([key,label])=>`${label}: ${result.counts[key]??'unavailable'}`).join(' · ');
+        const warnings=Object.values(result.errors||{}); status.className=warnings.length?'status error':'status';
+        status.textContent=`${features.length} scenes found (${counts})${warnings.length?'. '+warnings.join(' · '):''}${Object.values(result.counts).some(n=>n===Number(byId('limit').value))?' · Per-source result limit reached':''}.`;
       } catch(error) { status.className='status error'; status.textContent=error.message; }
       finally { button.disabled=false; }
     });
@@ -166,8 +180,32 @@
     byId('sm-example').addEventListener('click',()=>{
       [93.3,12.1,94.8,13.9].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
       byId('start').value='2025-12-30T00:00'; byId('end').value='2025-12-31T23:59';
-      byId('beam-mode').value='SM'; byId('polarization').value='VV+VH'; updateArea(true);
-      byId('status').textContent='Known S1 Stripmap area and date loaded. Select Search ASF.';
+      byId('sentinel-mode').value='SM'; byId('polarization').value='any'; updateArea(true);
+      byId('status').textContent='Known Sentinel-1 Stripmap area and date loaded. Search all satellites.';
+    });
+    byId('iceye-example').addEventListener('click',()=>{
+      [10.0,36.7,10.3,37.0].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
+      byId('start').value='2023-12-20T00:00'; byId('end').value='2023-12-21T00:00';
+      byId('sentinel-mode').value='any'; byId('polarization').value='any'; updateArea(true);
+      byId('status').textContent='Known ICEYE Open Data scene area and date loaded. Search all satellites.';
+    });
+    byId('capella-example').addEventListener('click',()=>{
+      [-118.2,34.7,-118.0,34.9].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
+      byId('start').value='2025-01-01T00:00'; byId('end').value='2025-01-02T00:00';
+      byId('sentinel-mode').value='any'; byId('polarization').value='any'; updateArea(true);
+      byId('status').textContent='Known Capella Open Data scene area and date loaded. Search all satellites.';
+    });
+    byId('umbra-example').addEventListener('click',()=>{
+      [159.1,-31.9,159.4,-31.6].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
+      byId('start').value='2025-06-22T00:00'; byId('end').value='2025-06-23T00:00';
+      byId('sentinel-mode').value='any'; byId('polarization').value='any'; updateArea(true);
+      byId('status').textContent='Known Umbra Open Data scene area and date loaded. Search all satellites.';
+    });
+    byId('nisar-example').addEventListener('click',()=>{
+      [-84,13,-81,16].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
+      byId('start').value='2026-06-30T23:50'; byId('end').value='2026-07-01T00:10';
+      byId('sentinel-mode').value='any'; byId('polarization').value='any'; updateArea(true);
+      byId('status').textContent='Known NISAR GCOV scene area and date loaded. Search all satellites.';
     });
     byId('draw-area').addEventListener('click',()=>setDrawing(!drawing));
     document.addEventListener('keydown',event=>{ if(event.key==='Escape' && drawing) { if (dragStart && aoiLayer) updateArea(); setDrawing(false); } });

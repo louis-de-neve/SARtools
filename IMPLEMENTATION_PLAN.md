@@ -6,7 +6,7 @@ Based on `codex_config.txt` (reviewed 11 November 2026).
 
 Build a reproducible tool that discovers open-access synthetic aperture radar (SAR) scenes across multiple providers, lets a researcher select scenes, downloads the selected assets, and writes both original products and documented derived formats. The command line interface (CLI) and graphical interface (GUI) must use the same search, selection, download, and export code.
 
-**First supported dataset:** Sentinel-1 Ground Range Detected (GRD). **First providers:** Alaska Satellite Facility (ASF) and Copernicus Data Space Ecosystem (CDSE). This gives two independent catalogues for the same product family and a useful test of cross-provider normalization. Add other missions and product levels through provider adapters after the first workflow is reliable. Open access does not necessarily mean anonymous downloads: both providers have authentication workflows.
+**First supported dataset:** Sentinel-1 Ground Range Detected (GRD) through Alaska Satellite Facility (ASF). **Additional satellite sources:** ICEYE Open Data GRD, Capella Open Data GEO/GEC, Umbra Open Data GEC, and NISAR GCOV. The GUI searches all five for the same area and time. Open access does not necessarily mean anonymous downloads: these sources have different access paths.
 
 **First release outputs:** original downloaded product, NetCDF, and NumPy arrays plus metadata. Treat GeoTIFF and other formats as later exporters if needed. A NetCDF or array export must declare its processing level, units, coordinate reference system (CRS), grid, nodata mask, and processing steps; merely changing a file extension is not a scientific conversion.
 
@@ -43,7 +43,7 @@ search:
   aoi: ./aoi.geojson             # GeoJSON geometry in WGS84
   start: 2025-01-01T00:00:00Z
   end: 2025-02-01T00:00:00Z
-  providers: [asf, cdse]
+  providers: [asf]
   product: sentinel-1-grd
   polarizations: [VV, VH]
 selection:
@@ -66,11 +66,13 @@ Paths should resolve relative to the config file, unless explicitly absolute. Th
 | 0. Development foundation (complete) | Initialize a local Git repository; establish package metadata and layout, a small real unit-test suite, contribution commands, `.gitignore`, and GitHub Actions CI. Connect the public GitHub repository and require CI checks on `main`. | Tests run locally and on a clean CI checkout; CI installs the package and runs the same test command on supported Python versions; no data or credentials enter Git. |
 | 1. Specification and skeleton (complete) | Agree the first SAR product, output semantics, config and manifest schemas, dependency choices, example AOI, package layout, CLI entry point, test framework, lint and CI. | Example config validates; invalid geometry, dates, CRS, and paths give useful errors; CI runs checks on a clean checkout. |
 | 2. Discovery via one provider (complete) | Implement ASF adapter, common scene model, pagination, metadata normalization, and CLI search output. | A known AOI and date range returns scene metadata and footprints; empty results and authentication/network errors are distinguishable. |
-| 3. Multi-provider discovery and selection | Add CDSE adapter, duplicate-acquisition grouping, deterministic sorting, filters, result/selection manifests. | The same query can show results from both providers; selection can be saved and replayed without changing chosen IDs. |
+| 3. Multi-mission discovery and selection (in progress) | Sentinel-1, ICEYE, Capella, Umbra, and NISAR discovery are implemented. The GUI combines their searches, sorts scenes, and reports per-source counts and failures. Saved selection remains. | The same GUI search shows scenes from all five satellite sources; selection can be saved and replayed without changing chosen IDs. |
 | 4. Downloads and original products | Implement credentials, destination layout, progress, retry/resume behavior, integrity checks, and persistent manifest. | Selected scenes download to requested paths; rerun skips verified files and recovers an interrupted transfer. |
 | 5. Scientific conversion and exports | Implement one explicit Sentinel-1 GRD processing profile, then NetCDF and NumPy exporters with masks, coordinates, units, and provenance. | Compare a small fixture against an independently processed reference; verify geolocation, pixel values/units, shape, and metadata. A fresh user can reproduce the output from the manifest. |
 | 6. GUI | Build AOI draw/import, selectable map projections, temporal slider, result table/map, selection, destination settings, and transfer progress over the shared services. | A user can perform the same search → select → download → export journey as the CLI; a drawn AOI maps to the same geographic search in each display projection. |
 | 7. Release and distribution | Documentation, example workflows, versioned release, and Docker image after the workflow is stable. | Clean-machine and container smoke tests run the example workflow; mounted inputs, outputs, credentials, and cache paths are documented. |
+
+Umbra Open Data resolves GEC GeoTIFFs from public S3 listings because its STAC asset links can be empty. NISAR discovery uses ASF's `asf_search` GCOV product filter; Earthdata login and HDF5 download/processing remain part of the download and export milestones. Keep one source-scoped result limit and a source-specific error for each adapter.
 
 ## Testing and CI
 

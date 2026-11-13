@@ -1,6 +1,10 @@
 # Sentinel-1 GRD API integration brief
 
-Checked 12 November 2026 against provider and STAC documentation. This is an interface research note, not a validated live API fixture.
+ASF is the sole Sentinel-1 source in the current tool. The CDSE material below is retained as research for a possible later integration.
+
+Checked 12 November 2026 against provider and STAC documentation. CDSE asset mapping was validated with a live STAC item on 13 November 2026.
+
+CDSE `sentinel-1-grd` Items expose a `Product` ZIP asset with an HTTPS OData download URL. Its UUID also appears in `properties._private.product_uuid`; the Item ID is a Sentinel product name, not the OData UUID. The collection includes GRD COG Items, identifiable by a `_COG` suffix in the product name. Earth Search's `sentinel-1-grd` Items expose per-polarization COG assets through requester-pays S3 URLs rather than a complete product ZIP.
 
 ## Recommendation
 
@@ -44,7 +48,7 @@ The service layer should use stable IDs such as `asf:<fileID>` and `cdse:<STAC i
 
 1. Create a small fixed WGS84 AOI and UTC date interval with a known Sentinel-1 GRD acquisition. Query ASF via `asf_search` using product type and record one complete response fixture with secrets removed.
 2. Normalize the fixture into `Scene`; assert ID, acquisition interval, geometry, GRD classification, polarization, and download URL. Verify that a second page is handled without duplicate scenes.
-3. Query CDSE `sentinel-1-grd` with the same AOI/time. Save one STAC Item fixture and one search page with a `next` link. Confirm exact asset structure and whether the STAC item ID is the OData product UUID or whether a separate field/link provides it. This mapping is **not yet verified** from the docs reviewed.
+3. Query CDSE `sentinel-1-grd` with the same AOI/time and check the `Product` asset and `next` link. The live Item confirms that `Product.href` is the OData ZIP URL and the Item ID is not the OData UUID. Contract tests retain representative fields; no credentials or full products are stored in Git.
 4. For each provider, execute a one-product download with researcher credentials in a manual/scheduled smoke test. Check auth refresh or expiration, redirects, final size/checksum where available, and rerun behavior. Do not put credentials or full products in Git.
 5. Compare ASF and CDSE records for the same product name; assert grouping while retaining both provider records and provenance.
 

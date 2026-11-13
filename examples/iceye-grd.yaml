@@ -1,0 +1,15 @@
+schema_version: 1
+search:
+  aoi: ./iceye-tunis.geojson
+  start: 2023-12-20T00:00:00Z
+  end: 2023-12-21T00:00:00Z
+  providers: [iceye]
+  product: iceye-grd
+  polarizations: [VV]
+  max_results: 10
+selection:
+  mode: manual
+output:
+  root: ../data
+  folder_template: "{provider}/{mission}/{year}/{scene_id}"
+  formats: [original]

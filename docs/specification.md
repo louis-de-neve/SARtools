@@ -2,7 +2,7 @@
 
 ## First product and workflow
 
-The first supported product is **Sentinel-1 Ground Range Detected (GRD)**. ASF is the first discovery provider; Copernicus Data Space is the next provider. A user validates a config, searches for available scenes, reviews a GeoJSON discovery manifest, selects scenes, and later downloads and exports them. Search and selection precede transfers. The CLI and future GUI use the same provider-neutral model.
+The first supported product is **Sentinel-1 Ground Range Detected (GRD)** through ASF. **ICEYE Open Data GRD**, **Capella Open Data GEO/GEC**, **Umbra Open Data GEC**, and **NISAR GCOV** are additional satellite products. The GUI searches all five sources together for the same area and time. A user validates a config, searches for available scenes, reviews a GeoJSON discovery manifest, selects scenes, and later downloads and exports them. Search and selection precede transfers. The CLI and GUI use the same provider-neutral model.
 
 ## Version 1 config
 
@@ -13,9 +13,9 @@ See [`examples/sentinel1-grd.yaml`](../examples/sentinel1-grd.yaml) and its AOI 
 | `schema_version` | Required integer `1`. |
 | `search.aoi` | GeoJSON Polygon or MultiPolygon (or a Feature containing one), in WGS84 longitude/latitude. The first bbox search rejects antimeridian crossings and AOIs over 180° wide. |
 | `search.start`, `search.end` | ISO 8601 instants with timezones; start must precede end. |
-| `search.providers` | Nonempty list from `asf`, `cdse`. Only ASF is implemented so far. |
-| `search.product` | `sentinel-1-grd` in this release. |
-| `search.polarizations` | Optional list of `VV`, `VH`, `HH`, `HV`; defaults to `VV`, `VH`. ASF treats this as an exact channel combination: `[VV, VH]` is sent as `VV+VH`. Unsupported combinations are rejected. See [ASF polarization values](https://docs.asf.alaska.edu/api/keywords/). |
+| `search.providers` | Nonempty list containing `asf`, `iceye`, `capella`, `umbra`, or `nisar`. The CLI uses one product per config; the GUI searches all five sources together. |
+| `search.product` | `sentinel-1-grd`, `iceye-grd`, `capella-detected`, `umbra-gec`, or `nisar-gcov`; determines which provider is valid. |
+| `search.polarizations` | Optional list of `VV`, `VH`, `HH`, `HV`; defaults to `VV`, `VH` for Sentinel-1, `VV` for ICEYE, `HH` for Capella and Umbra, and `HH`, `HV` for NISAR. ASF treats this as an exact channel combination: `[VV, VH]` is sent as `VV+VH`. Unsupported combinations are rejected. See [ASF polarization values](https://docs.asf.alaska.edu/api/keywords/). |
 | `search.max_results` | Positive integer; defaults to `100`. |
 | `selection.mode` | `manual`, `all`, or `explicit_ids`; the last mode requires `selection.ids`. Download selection is a later milestone. |
 | `output.root` | Destination directory. An existing file is rejected. |

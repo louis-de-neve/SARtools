@@ -212,12 +212,40 @@ def load_config(path: str | Path) -> ToolConfig:
     end = _time(search.get("end"), "search.end")
     if start >= end:
         raise ConfigError("search.start must be earlier than search.end")
-    providers = _sequence(search.get("providers"), "search.providers", {"asf", "cdse"})
+    providers = _sequence(
+        search.get("providers"),
+        "search.providers",
+        {"asf", "iceye", "capella", "umbra", "nisar"},
+    )
     product = _nonempty_string(search.get("product"), "search.product")
-    if product != "sentinel-1-grd":
-        raise ConfigError("search.product currently supports only sentinel-1-grd")
+    if product not in (
+        "sentinel-1-grd",
+        "iceye-grd",
+        "capella-detected",
+        "umbra-gec",
+        "nisar-gcov",
+    ):
+        raise ConfigError(
+            "search.product must be sentinel-1-grd, iceye-grd, capella-detected, umbra-gec, or nisar-gcov"
+        )
+    expected = {
+        "sentinel-1-grd": {"asf"},
+        "iceye-grd": {"iceye"},
+        "capella-detected": {"capella"},
+        "umbra-gec": {"umbra"},
+        "nisar-gcov": {"nisar"},
+    }[product]
+    if not set(providers) <= expected:
+        raise ConfigError(f"search.providers are incompatible with {product}")
+    polarization_defaults = {
+        "sentinel-1-grd": ["VV", "VH"],
+        "iceye-grd": ["VV"],
+        "capella-detected": ["HH"],
+        "umbra-gec": ["HH"],
+        "nisar-gcov": ["HH", "HV"],
+    }
     polarizations = _sequence(
-        search.get("polarizations", ["VV", "VH"]),
+        search.get("polarizations", polarization_defaults[product]),
         "search.polarizations",
         {"VV", "VH", "HH", "HV"},
     )

@@ -94,6 +94,32 @@ class ConfigTests(unittest.TestCase):
         ):
             load_config(self.config)
 
+    def test_iceye_product_requires_iceye_provider(self) -> None:
+        iceye = load_config(EXAMPLES / "iceye-grd.yaml")
+        self.assertEqual(iceye.search.product, "iceye-grd")
+        self.assertEqual(iceye.search.providers, ("iceye",))
+        self.change("product: sentinel-1-grd", "product: iceye-grd")
+        with self.assertRaisesRegex(ConfigError, "incompatible"):
+            load_config(self.config)
+
+    def test_capella_product_requires_capella_provider(self) -> None:
+        capella = load_config(EXAMPLES / "capella-detected.yaml")
+        self.assertEqual(capella.search.product, "capella-detected")
+        self.assertEqual(capella.search.providers, ("capella",))
+        self.change("product: sentinel-1-grd", "product: capella-detected")
+        with self.assertRaisesRegex(ConfigError, "incompatible"):
+            load_config(self.config)
+
+    def test_umbra_and_nisar_examples_validate(self) -> None:
+        for name, product, provider in (
+            ("umbra-gec.yaml", "umbra-gec", "umbra"),
+            ("nisar-gcov.yaml", "nisar-gcov", "nisar"),
+        ):
+            with self.subTest(name=name):
+                loaded = load_config(EXAMPLES / name)
+                self.assertEqual(loaded.search.product, product)
+                self.assertEqual(loaded.search.providers, (provider,))
+
     def test_unknown_keys_are_rejected(self) -> None:
         self.change("max_results: 10", "max_result: 10")
         with self.assertRaisesRegex(ConfigError, "search has unknown key.*max_result"):

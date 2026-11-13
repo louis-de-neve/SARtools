@@ -1,0 +1,15 @@
+schema_version: 1
+search:
+  aoi: ./nisar-caribbean.geojson
+  start: 2026-06-30T23:50:00Z
+  end: 2026-07-01T00:10:00Z
+  providers: [nisar]
+  product: nisar-gcov
+  polarizations: [HH, HV]
+  max_results: 10
+selection:
+  mode: manual
+output:
+  root: ../data
+  folder_template: "{provider}/{mission}/{year}/{scene_id}"
+  formats: [original]

@@ -12,7 +12,12 @@ import requests
 from sartool.config import ConfigError, load_config
 from sartool.config_cli import validate
 from sartool.models import SearchQuery
+from sartool.providers import PRODUCTS, PROVIDERS, make_adapter
 from sartool.providers.asf import ASFAdapter, ASFQueryError, ASFResultError
+from sartool.providers.capella import CapellaResultError
+from sartool.providers.iceye import ICEYEResultError
+from sartool.providers.nisar import NISARResultError
+from sartool.providers.umbra import UmbraResultError
 
 
 def _date_time(value: str) -> datetime:
@@ -38,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     validate_parser.add_argument("--config", required=True)
     search_parser = commands.add_parser("search", help="discover SAR scenes")
-    search_parser.add_argument("provider", choices=("asf",))
+    search_parser.add_argument("provider", choices=PROVIDERS)
     search_parser.add_argument("--config", help="validated YAML search configuration")
     search_parser.add_argument(
         "--bbox", type=float, nargs=4, metavar=("WEST", "SOUTH", "EAST", "NORTH")
@@ -46,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     search_parser.add_argument("--start", type=_date_time)
     search_parser.add_argument("--end", type=_date_time)
     search_parser.add_argument("--limit", type=int)
-    search_parser.add_argument("--beam-mode", choices=("IW", "EW", "SM"))
+    search_parser.add_argument("--beam-mode", help="mission-specific acquisition mode")
     search_parser.add_argument(
         "--output", help="write the GeoJSON discovery manifest to this path"
     )
@@ -72,8 +77,12 @@ def main(argv: list[str] | None = None) -> int:
                     "--config cannot be combined with --bbox, --start, --end, or --limit"
                 )
             config = load_config(args.config)
-            if "asf" not in config.search.providers:
-                parser.error("search.providers must include asf for an ASF search")
+            if args.provider not in config.search.providers:
+                parser.error(f"search.providers must include {args.provider}")
+            if config.search.product != PRODUCTS[args.provider]:
+                parser.error(
+                    f"{args.provider} requires search.product: {PRODUCTS[args.provider]}"
+                )
             query = config.search_query()
             if args.beam_mode is not None:
                 query = replace(query, beam_mode=args.beam_mode)
@@ -88,27 +97,40 @@ def main(argv: list[str] | None = None) -> int:
                 limit,
                 beam_mode=args.beam_mode,
             )
+        if (
+            args.beam_mode
+            and args.provider == "asf"
+            and args.beam_mode not in ("IW", "EW", "SM")
+        ):
+            parser.error("Sentinel-1 beam mode must be IW, EW, or SM")
     except ConfigError as exc:
         print(f"Invalid configuration: {exc}", file=sys.stderr)
         return 2
     except ValueError as exc:
         parser.error(str(exc))
     try:
-        scenes = ASFAdapter().search(query)
+        adapter = (
+            ASFAdapter() if args.provider == "asf" else make_adapter(args.provider)
+        )
+        scenes = adapter.search(query)
     except (
         ASFQueryError,
         ASFResultError,
+        ICEYEResultError,
+        CapellaResultError,
+        UmbraResultError,
+        NISARResultError,
         asf_search.ASFError,
         asf_search.CMRError,
         requests.RequestException,
     ) as exc:
-        print(f"ASF search failed: {exc}", file=sys.stderr)
+        print(f"{args.provider.upper()} search failed: {exc}", file=sys.stderr)
         return 1
     manifest = {
         "type": "FeatureCollection",
         "query": {
-            "provider": "asf",
-            "product": "sentinel-1-grd",
+            "provider": args.provider,
+            "product": PRODUCTS[args.provider],
             "bbox": list(query.bbox),
             "start": query.start.isoformat().replace("+00:00", "Z"),
             "end": query.end.isoformat().replace("+00:00", "Z"),

@@ -1,0 +1,15 @@
+schema_version: 1
+search:
+  aoi: ./capella-la.geojson
+  start: 2025-01-01T00:00:00Z
+  end: 2025-01-02T00:00:00Z
+  providers: [capella]
+  product: capella-detected
+  polarizations: [HH]
+  max_results: 10
+selection:
+  mode: manual
+output:
+  root: ../data
+  folder_template: "{provider}/{mission}/{year}/{scene_id}"
+  formats: [original]

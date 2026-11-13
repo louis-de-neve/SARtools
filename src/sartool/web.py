@@ -1,8 +1,9 @@
-"""Local browser interface for ASF scene discovery."""
+"""Local browser interface for combined SAR satellite discovery."""
 
 import json
 import math
 import webbrowser
+from dataclasses import replace
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
@@ -11,11 +12,35 @@ import asf_search
 import requests
 
 from sartool.models import SearchQuery
-from sartool.providers.asf import ASFAdapter, ASFQueryError, ASFResultError
+from sartool.providers import make_adapter
+from sartool.providers.asf import ASFQueryError, ASFResultError
+from sartool.providers.capella import CapellaResultError
+from sartool.providers.iceye import ICEYEResultError
+from sartool.providers.nisar import NISARResultError
+from sartool.providers.umbra import UmbraResultError
+
+SOURCES = {
+    "asf": "Sentinel-1",
+    "iceye": "ICEYE Open Data",
+    "capella": "Capella Open Data",
+    "umbra": "Umbra Open Data",
+    "nisar": "NISAR",
+}
+SEARCH_ERRORS = (
+    ASFQueryError,
+    ASFResultError,
+    ICEYEResultError,
+    CapellaResultError,
+    UmbraResultError,
+    NISARResultError,
+    asf_search.ASFError,
+    asf_search.CMRError,
+    requests.RequestException,
+)
 
 
 def parse_query(data: object) -> SearchQuery:
-    """Validate browser input before querying ASF."""
+    """Validate browser input for a search across every supported mission."""
     if not isinstance(data, dict):
         raise TypeError("request must be a JSON object")
     try:
@@ -42,16 +67,20 @@ def parse_query(data: object) -> SearchQuery:
         }
         if polarization not in options:
             raise ValueError("unsupported polarization")
-        beam_mode = data.get("beam_mode", "any")
-        if beam_mode not in ("any", "IW", "EW", "SM"):
-            raise ValueError("unsupported beam mode")
+        if "provider" in data or "beam_mode" in data:
+            raise ValueError(
+                "the GUI searches all satellites; provider and beam_mode are not accepted"
+            )
+        sentinel_mode = data.get("sentinel_mode", "any")
+        if sentinel_mode not in ("any", "IW", "EW", "SM"):
+            raise ValueError("unsupported Sentinel-1 mode")
         return SearchQuery(
             bounds,
             start,
             end,
             limit,
             options[polarization],
-            None if beam_mode == "any" else beam_mode,
+            None if sentinel_mode == "any" else sentinel_mode,
         )
     except (KeyError, TypeError, OverflowError, ValueError) as exc:
         raise ValueError(f"invalid search input: {exc}") from exc
@@ -94,22 +123,33 @@ class GUIHandler(BaseHTTPRequestHandler):
         except (TypeError, ValueError) as exc:
             self._json(400, {"error": str(exc)})
             return
-        try:
-            scenes = ASFAdapter().search(query)
-        except (
-            ASFQueryError,
-            ASFResultError,
-            asf_search.ASFError,
-            asf_search.CMRError,
-            requests.RequestException,
-        ) as exc:
-            self._json(502, {"error": f"ASF search failed: {exc}"})
+        scenes = []
+        counts = {}
+        errors = {}
+        for provider, label in SOURCES.items():
+            try:
+                source_query = (
+                    replace(query, beam_mode=None) if provider != "asf" else query
+                )
+                found = make_adapter(provider).search(source_query)
+                counts[provider] = len(found)
+                scenes.extend(found)
+            except SEARCH_ERRORS as exc:
+                errors[provider] = f"{label} search failed: {exc}"
+        if len(errors) == len(SOURCES):
+            self._json(
+                502, {"error": "All satellite searches failed", "errors": errors}
+            )
             return
+        scenes.sort(key=lambda scene: (scene.start, scene.id), reverse=True)
         self._json(
             200,
             {
                 "type": "FeatureCollection",
                 "bbox": list(query.bbox),
+                "counts": counts,
+                "sources": SOURCES,
+                "errors": errors,
                 "features": [scene.to_feature() for scene in scenes],
             },
         )
