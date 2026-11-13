@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SARtool · ASF discovery</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+  <style>
+    :root { font: 15px/1.45 system-ui, sans-serif; color: #e9f0f4; background: #101a23; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { padding: 24px clamp(18px, 4vw, 48px); border-bottom: 1px solid #2d4352; }
+    h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.03em; }
+    header p { margin: 5px 0 0; color: #a9bdc9; }
+    main { display: grid; grid-template-columns: minmax(260px, 330px) minmax(0, 1fr); gap: 22px; padding: 22px clamp(18px, 4vw, 48px); }
+    .panel { background: #192936; border: 1px solid #304759; border-radius: 12px; padding: 20px; }
+    h2 { margin: 0 0 15px; font-size: 1.1rem; }
+    label { display: block; margin: 13px 0 5px; color: #c2d4df; font-weight: 600; }
+    input, select, button { font: inherit; }
+    input, select { width: 100%; background: #101d27; color: #f0f6f9; border: 1px solid #557082; border-radius: 6px; padding: 9px; }
+    input:focus, select:focus, button:focus-visible, .scene:focus-visible { outline: 2px solid #62d9cf; outline-offset: 2px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid label { margin-bottom: 0; }
+    .hint { color: #9eb5c2; font-size: .85rem; margin: 7px 0 0; }
+    button { cursor: pointer; border: 0; border-radius: 7px; background: #64d5c4; color: #10212a; padding: 10px 16px; font-weight: 700; }
+    button:disabled { opacity: .6; cursor: wait; }
+    form > button { width: 100%; margin-top: 22px; }
+    .workspace { min-width: 0; display: grid; gap: 20px; align-content: start; }
+    .status { min-height: 1.5em; color: #b8cad4; margin: 0 0 12px; }
+    .status.error { color: #ffb0a2; }
+    #map { width: 100%; height: min(52vh, 480px); min-height: 300px; border-radius: 8px; background: #10222d; }
+    .map-toolbar { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .map-toolbar button { padding: 7px 12px; }
+    .map-toolbar button.active { background: #ffcf69; }
+    .map-toolbar span { color: #a9bdc9; font-size: .88rem; }
+    .leaflet-container { font: inherit; }
+    .legend { color: #a9bdc9; font-size: .85rem; margin: 9px 0 0; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border: 2px solid #ffae62; margin: 0 5px 0 12px; vertical-align: -1px; }
+    .swatch:first-child { margin-left: 0; border-color: #70e4da; background: #305f61; }
+    .results { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(240px, 1fr); gap: 14px; }
+    #scenes { max-height: 360px; overflow: auto; display: grid; gap: 7px; align-content: start; }
+    .scene { width: 100%; text-align: left; background: #213746; color: #e6eff3; border: 1px solid #3c5868; font-weight: 400; overflow-wrap: anywhere; }
+    .scene.active { border-color: #ffcf69; background: #3d3b32; }
+    .scene small { display: block; color: #aac0ca; margin-top: 3px; }
+    #details { color: #c2d4df; overflow-wrap: anywhere; }
+    #details dl { display: grid; grid-template-columns: 100px 1fr; gap: 8px; margin: 0; }
+    #details dt { color: #8faab8; }
+    #details dd { margin: 0; }
+    .preview { margin: 0 0 18px; }
+    .preview img { display: block; max-width: 100%; max-height: 320px; object-fit: contain; border-radius: 7px; background: #101d27; }
+    .preview figcaption { color: #9eb5c2; font-size: .85rem; margin-top: 5px; }
+    @media (max-width: 850px) { main { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .results { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><h1>SARtool</h1><p>Explore available Sentinel-1 GRD scenes from ASF</p></header>
+  <main>
+    <section class="panel" aria-label="Search input">
+      <h2>Search area and time</h2>
+      <form id="search-form">
+        <div class="grid">
+          <div><label for="west">West</label><input id="west" type="number" step="any" value="-0.5" required></div>
+          <div><label for="south">South</label><input id="south" type="number" step="any" value="51.3" required></div>
+          <div><label for="east">East</label><input id="east" type="number" step="any" value="0.3" required></div>
+          <div><label for="north">North</label><input id="north" type="number" step="any" value="51.7" required></div>
+        </div>
+        <p class="hint">WGS84 longitude and latitude bounding box</p>
+        <label for="start">From (UTC)</label><input id="start" type="datetime-local" value="2025-01-01T00:00" required>
+        <label for="end">To (UTC)</label><input id="end" type="datetime-local" value="2025-01-08T00:00" required>
+        <label for="polarization">Polarization</label>
+        <select id="polarization"><option value="any">Any</option><option>VV+VH</option><option>HH+HV</option><option>VV</option><option>HH</option></select>
+        <label for="beam-mode">Acquisition mode</label>
+        <select id="beam-mode"><option value="any">Any</option><option value="IW">IW · Interferometric Wide</option><option value="EW">EW · Extra Wide</option><option value="SM">SM · Stripmap (S1–S6)</option></select>
+        <p class="hint">Stripmap is catalogued by ASF as beams S1–S6. Coverage varies by location and date.</p>
+        <button id="sm-example" type="button" style="margin-top:12px;width:100%;background:#2c5360;color:#e9f0f4">Load known SM example</button>
+        <label for="limit">Maximum scenes</label><input id="limit" type="number" min="1" max="200" value="50" required>
+        <button id="submit" type="submit">Search ASF</button>
+      </form>
+    </section>
+    <div class="workspace">
+      <section class="panel" aria-label="Footprint map">
+        <h2>Scene footprints</h2><p id="status" class="status" role="status">Enter a search and select Search ASF.</p>
+        <div class="map-toolbar"><button id="draw-area" type="button" aria-pressed="false">Draw search area</button><span id="map-help">Drag on the map after selecting Draw search area. Pan and zoom normally otherwise.</span></div>
+        <div id="map" role="application" aria-label="Map with search area and scene footprints"></div>
+        <p class="legend"><span class="swatch"></span>Scene footprint <span class="swatch"></span>Search area</p>
+      </section>
+      <section class="panel" aria-label="Search results"><h2>Results</h2>
+        <div class="results"><div id="scenes"></div><div id="details">Select a scene to inspect its metadata.</div></div>
+      </section>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
+  <script>
+    const byId = id => document.getElementById(id);
+    let features = [], selected = -1, map = null, aoiLayer = null, sceneLayer = null, drawing = false, dragStart = null;
+    const bboxInputs = ['west','south','east','north'];
+    const currentBbox = () => bboxInputs.map(id => Number(byId(id).value));
+    function validBbox(b) { return b.every(Number.isFinite) && b[0] >= -180 && b[2] <= 180 && b[1] >= -90 && b[3] <= 90 && b[0] < b[2] && b[1] < b[3]; }
+    function leafletBounds(b) { return [[b[1],b[0]],[b[3],b[2]]]; }
+    function updateArea(fit = false) {
+      if (!map) return;
+      const b = currentBbox(); if (!validBbox(b)) return;
+      if (aoiLayer) map.removeLayer(aoiLayer);
+      aoiLayer = L.rectangle(leafletBounds(b), {color:'#ffae62',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map);
+      if (fit) map.fitBounds(aoiLayer.getBounds(), {padding:[30,30],maxZoom:11});
+    }
+    function setDrawing(active) {
+      if (!map) return;
+      drawing=active; dragStart=null;
+      byId('draw-area').classList.toggle('active',active);
+      byId('draw-area').setAttribute('aria-pressed',String(active));
+      byId('map-help').textContent=active?'Drag to draw a search box. Press Escape to cancel.':'Drag on the map after selecting Draw search area. Pan and zoom normally otherwise.';
+      if (active) { map.dragging.disable(); map.getContainer().style.cursor='crosshair'; }
+      else { map.dragging.enable(); map.getContainer().style.cursor=''; }
+    }
+    function renderMap() {
+      if (!map) return;
+      if (sceneLayer) map.removeLayer(sceneLayer);
+      sceneLayer=L.geoJSON({type:'FeatureCollection',features}, {
+        style: f => ({color:features[selected]?.id===f.id?'#ffcf69':'#26a79b',weight:features[selected]?.id===f.id?4:2,fillColor:features[selected]?.id===f.id?'#ffcf69':'#55d6cb',fillOpacity:.22}),
+        onEachFeature: (f,layer) => { layer.bindTooltip(f.properties.name); layer.on('click',()=>select(features.findIndex(item=>item.id===f.id))); }
+      }).addTo(map);
+    }
+    function previewUrlFor(feature) {
+      const browse=feature.properties.source_metadata?.browse;
+      const candidates=Array.isArray(browse)?browse:[browse];
+      return candidates.find(value=>{
+        if(typeof value!=='string') return false;
+        try { const url=new URL(value); return url.protocol==='https:' && /\.jpe?g$/i.test(url.pathname); }
+        catch { return false; }
+      });
+    }
+    function select(index) { selected=index; renderMap(); renderList(); renderDetails(); }
+    function renderList() {
+      const list=byId('scenes'); list.replaceChildren();
+      features.forEach((f,i)=>{ const button=document.createElement('button'); button.className=`scene${i===selected?' active':''}`; button.type='button'; button.textContent=f.properties.name;
+        const small=document.createElement('small'); small.textContent=`${f.properties.start} · ${f.properties.platform}`; button.append(small); button.addEventListener('click',()=>select(i)); list.append(button); });
+    }
+    function renderDetails() {
+      const details=byId('details'); details.replaceChildren(); if(selected<0) { details.textContent='Select a scene to inspect its metadata.'; return; }
+      const f=features[selected], p=f.properties, dl=document.createElement('dl');
+      const previewUrl=previewUrlFor(f);
+      if(previewUrl) {
+        const figure=document.createElement('figure'), image=document.createElement('img'), caption=document.createElement('figcaption');
+        figure.className='preview'; image.src=previewUrl; image.alt=`ASF preview of ${p.name}`; image.loading='lazy'; image.referrerPolicy='no-referrer';
+        caption.textContent='ASF browse preview';
+        image.addEventListener('error',()=>{ image.remove(); caption.textContent='ASF preview unavailable'; });
+        figure.append(image,caption); details.append(figure);
+      }
+      for(const [label,value] of [['Scene ID',f.id],['Platform',p.platform],['Acquired',p.start],['Product',p.product_type],['Polarization',p.polarizations.join('+')],['Beam mode',p.beam_mode||'—'],['Direction',p.flight_direction||'—'],['URL',p.download_url||'—'],['Size',p.size_bytes==null?'—':`${(p.size_bytes/1e9).toFixed(2)} GB`]]) {
+        const dt=document.createElement('dt'), dd=document.createElement('dd'); dt.textContent=label; dd.textContent=value; dl.append(dt,dd);
+      } details.append(dl);
+    }
+    byId('search-form').addEventListener('submit', async event => {
+      event.preventDefault(); const button=byId('submit'), status=byId('status'); button.disabled=true; status.className='status'; status.textContent='Searching ASF…';
+      const bbox=currentBbox();
+      try {
+        const response=await fetch('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bbox,start:byId('start').value+'Z',end:byId('end').value+'Z',polarization:byId('polarization').value,beam_mode:byId('beam-mode').value,max_results:Number(byId('limit').value)})});
+        const result=await response.json(); if(!response.ok) throw new Error(result.error||'Search failed');
+        features=result.features; selected=-1; updateArea(); renderMap(); renderList(); renderDetails(); status.textContent=`${features.length} scene${features.length===1?'':'s'} found${features.length===Number(byId('limit').value)?' (result limit reached)':''}.`;
+      } catch(error) { status.className='status error'; status.textContent=error.message; }
+      finally { button.disabled=false; }
+    });
+    bboxInputs.forEach(id => byId(id).addEventListener('change',()=>updateArea(true)));
+    byId('sm-example').addEventListener('click',()=>{
+      [93.3,12.1,94.8,13.9].forEach((value,i)=>{byId(bboxInputs[i]).value=value;});
+      byId('start').value='2025-12-30T00:00'; byId('end').value='2025-12-31T23:59';
+      byId('beam-mode').value='SM'; byId('polarization').value='VV+VH'; updateArea(true);
+      byId('status').textContent='Known S1 Stripmap area and date loaded. Select Search ASF.';
+    });
+    byId('draw-area').addEventListener('click',()=>setDrawing(!drawing));
+    document.addEventListener('keydown',event=>{ if(event.key==='Escape' && drawing) { if (dragStart && aoiLayer) updateArea(); setDrawing(false); } });
+    if (window.L) {
+      map=L.map('map',{zoomControl:true,worldCopyJump:false});
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+      updateArea(true);
+      map.on('mousedown',event=>{ if(!drawing) return; dragStart=event.latlng; });
+      map.on('mousemove',event=>{ if(!drawing || !dragStart) return; if(aoiLayer) map.removeLayer(aoiLayer); aoiLayer=L.rectangle([dragStart,event.latlng],{color:'#ffae62',weight:2,dashArray:'7 5',fill:false,interactive:false}).addTo(map); });
+      map.on('mouseup',event=>{
+        if(!drawing || !dragStart) return;
+        const b=L.latLngBounds(dragStart,event.latlng), west=b.getWest(), east=b.getEast(), south=b.getSouth(), north=b.getNorth();
+        if(validBbox([west,south,east,north])) { [west,south,east,north].forEach((value,i)=>{ byId(bboxInputs[i]).value=value.toFixed(6); }); updateArea(); }
+        else updateArea();
+        setDrawing(false);
+      });
+    } else {
+      byId('map-help').textContent='Map library could not load. Check your internet connection; coordinate fields still work.';
+      byId('draw-area').disabled=true;
+    }
+  </script>
+</body>
+</html>

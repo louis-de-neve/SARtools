@@ -31,6 +31,26 @@ sartool search asf --bbox -0.5 51.3 0.3 51.7 \
 
 The command writes a GeoJSON discovery manifest containing normalized fields and the original ASF metadata. It searches Sentinel-1 GRD only. Downloading is a later milestone.
 
+For Stripmap scenes, select **SM · Stripmap (S1–S6)** in the GUI or pass `--beam-mode SM` to the CLI. ASF records Sentinel-1 Stripmap under the individual S1–S6 beam names. The GUI's **Load known SM example** button fills a verified area and date near 94°E, 13°N. The equivalent CLI search is:
+
+```bash
+sartool search asf --bbox 93.3 12.1 94.8 13.9 \
+  --start 2025-12-30T00:00:00Z --end 2025-12-31T23:59:00Z \
+  --beam-mode SM --limit 20 --output sm-results.geojson
+```
+
+Sentinel-1 GRD catalogue links point to ZIP products. Those products contain TIFF measurement images; SARtool currently writes only a GeoJSON search manifest and does not create TIFF files.
+
+## Local discovery GUI
+
+Launch the browser interface after installing the package:
+
+```bash
+.venv/bin/sartool gui
+```
+
+It opens `http://127.0.0.1:8765/`. Enter WGS84 west/south/east/north bounds or click **Draw search area** and drag a rectangle on the map. The coordinate fields and orange map rectangle stay in sync. Enter a UTC time range, polarization, and result limit, then search to see ASF scene footprints and metadata. Selecting a result shows its ASF JPG browse preview in the bottom-right details panel when available. The background uses OpenStreetMap tiles and requires an internet connection, as does ASF search and the preview. Press Ctrl+C in the terminal to stop the server. Use `--no-browser` if you want to open the address yourself, or `--port 8766` to choose another port.
+
 The same search can use the validated YAML example:
 
 ```bash

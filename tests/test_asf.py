@@ -8,7 +8,13 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from sartool.models import SearchQuery
-from sartool.providers.asf import GRD_LEVELS, ASFAdapter, ASFQueryError, ASFResultError
+from sartool.providers.asf import (
+    GRD_LEVELS,
+    STRIPMAP_BEAMS,
+    ASFAdapter,
+    ASFQueryError,
+    ASFResultError,
+)
 
 FIXTURE = json.loads(
     (Path(__file__).parent / "fixtures/asf_sentinel1_grd.json").read_text()
@@ -140,6 +146,19 @@ class ASFAdapterTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ASFQueryError, "polarization combination"):
             ASFAdapter(search_pages).search(unsupported)
+
+    def test_stripmap_queries_all_six_asf_beams(self) -> None:
+        captured = {}
+
+        def search_pages(**options):
+            captured.update(options)
+            return [[]]
+
+        query = SearchQuery(
+            self.query.bbox, self.query.start, self.query.end, beam_mode="SM"
+        )
+        ASFAdapter(search_pages).search(query)
+        self.assertEqual(captured["beamMode"], STRIPMAP_BEAMS)
 
 
 if __name__ == "__main__":

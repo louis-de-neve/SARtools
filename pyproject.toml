@@ -23,3 +23,6 @@ dev = ["ruff>=0.14,<1"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+sartool = ["web/index.html"]

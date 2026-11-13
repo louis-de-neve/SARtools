@@ -16,6 +16,7 @@ GRD_LEVELS = (
     asf_search.PRODUCT_TYPE.GRD_MS,
     asf_search.PRODUCT_TYPE.GRD_FD,
 )
+STRIPMAP_BEAMS = tuple(f"S{i}" for i in range(1, 7))
 
 
 class ASFResultError(ValueError):
@@ -150,6 +151,10 @@ class ASFAdapter:
             "maxResults": query.max_results,
         }
         polarization = _polarization_filter(query.polarizations)
+        if query.beam_mode == "SM":
+            options["beamMode"] = STRIPMAP_BEAMS
+        elif query.beam_mode is not None:
+            options["beamMode"] = query.beam_mode
         if polarization is not None:
             options["polarization"] = polarization
         scenes: list[Scene] = []

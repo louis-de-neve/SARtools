@@ -65,6 +65,7 @@ class CLITests(unittest.TestCase):
                 "start": "2025-01-01T00:00:00Z",
                 "end": "2025-01-08T00:00:00Z",
                 "max_results": 1,
+                "beam_mode": None,
                 "polarizations": None,
             },
         )

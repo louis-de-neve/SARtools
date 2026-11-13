@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+from dataclasses import replace
 from datetime import datetime
 
 import asf_search
@@ -27,6 +28,9 @@ def _date_time(value: str) -> datetime:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sartool")
     commands = parser.add_subparsers(dest="command", required=True)
+    gui_parser = commands.add_parser("gui", help="open the local discovery GUI")
+    gui_parser.add_argument("--port", type=int, default=8765)
+    gui_parser.add_argument("--no-browser", action="store_true")
     config_parser = commands.add_parser("config", help="manage tool configuration")
     config_commands = config_parser.add_subparsers(dest="config_command", required=True)
     validate_parser = config_commands.add_parser(
@@ -42,10 +46,18 @@ def main(argv: list[str] | None = None) -> int:
     search_parser.add_argument("--start", type=_date_time)
     search_parser.add_argument("--end", type=_date_time)
     search_parser.add_argument("--limit", type=int)
+    search_parser.add_argument("--beam-mode", choices=("IW", "EW", "SM"))
     search_parser.add_argument(
         "--output", help="write the GeoJSON discovery manifest to this path"
     )
     args = parser.parse_args(argv)
+
+    if args.command == "gui":
+        from sartool.web import serve
+
+        if not 0 <= args.port <= 65535:
+            parser.error("--port must be between 0 and 65535")
+        return serve(args.port, open_browser=not args.no_browser)
 
     if args.command == "config":
         return validate(args.config)
@@ -63,11 +75,19 @@ def main(argv: list[str] | None = None) -> int:
             if "asf" not in config.search.providers:
                 parser.error("search.providers must include asf for an ASF search")
             query = config.search_query()
+            if args.beam_mode is not None:
+                query = replace(query, beam_mode=args.beam_mode)
         else:
             if args.bbox is None or args.start is None or args.end is None:
                 parser.error("provide --config or all of --bbox, --start, and --end")
             limit = args.limit if args.limit is not None else 100
-            query = SearchQuery(tuple(args.bbox), args.start, args.end, limit)
+            query = SearchQuery(
+                tuple(args.bbox),
+                args.start,
+                args.end,
+                limit,
+                beam_mode=args.beam_mode,
+            )
     except ConfigError as exc:
         print(f"Invalid configuration: {exc}", file=sys.stderr)
         return 2
@@ -93,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             "start": query.start.isoformat().replace("+00:00", "Z"),
             "end": query.end.isoformat().replace("+00:00", "Z"),
             "max_results": query.max_results,
+            "beam_mode": query.beam_mode,
             "polarizations": list(query.polarizations)
             if query.polarizations is not None
             else None,

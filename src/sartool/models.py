@@ -14,6 +14,7 @@ class SearchQuery:
     end: datetime
     max_results: int = 100
     polarizations: tuple[str, ...] | None = None
+    beam_mode: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.bbox) != 4:
@@ -29,6 +30,8 @@ class SearchQuery:
             raise ValueError("start must be earlier than end")
         if self.max_results < 1:
             raise ValueError("max_results must be at least 1")
+        if self.beam_mode not in (None, "IW", "EW", "SM"):
+            raise ValueError("beam_mode must be IW, EW, SM, or omitted")
         if self.polarizations is not None:
             if not self.polarizations or len(set(self.polarizations)) != len(
                 self.polarizations
